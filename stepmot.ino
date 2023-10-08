@@ -5,36 +5,36 @@
 #define LCD_COLS 16
 LiquidCrystal_I2C lcd(I2C_ADDR, LCD_COLS, LCD_ROWS);
 
-const int encoderPinA = 2;  // 旋轉編碼器引腳 A（CLK）
-const int encoderPinB = 3;  // 旋轉編碼器引腳 B（DT）
-const int confirmPin = 4; //確認引腳 10k Ω
+const int encoderPinA = 2;  // Rotary encoder pin A（CLK）
+const int encoderPinB = 3;  // Rotary encoder pin B（DT）
+const int confirmPin = 4; //Rotary encoder confirm pin with 10k Ω
 
 int lastEncoded = 0;
-long encoderValue = 0; //旋轉編碼器記數
-long tempencoderValue = 0; //旋轉編碼器記數暫存
-int mode = 0; //記數切換模式
-int selectmode = 0; //選擇第一層模式
-int dir = 0;//定義旋轉方向
-int rot = 0;//是否旋轉
-int modeselection; //儲存選擇的模式
-int level = 1; //現在顯示的等級(圖層順序)
+long encoderValue = 0; //encoderValue
+long tempencoderValue = 0; //encoderValue temp
+int mode = 0; //mode level
+int selectmode = 0; //level 1 mode selection
+int dir = 0;//define rotary encoder rotate direction
+int rot = 0;//define rotary encoder rotate ot not
+int modeselection; //save the mode selected
+int level = 1; //now select level
 
-// 步進馬達控制引腳
+// stepmotor control pins
 const int stepPin = 5;
 const int dirPin = 6;
 const int enablePin = 7;
 
-// 步進馬達的步進角度和腳位數
-const float stepAngle = 1.8; // 步進角度 (度)
-const int stepsPerRevolution = 200; // 步進馬達的腳位數
+// stepAngle and stepsPerRevolution of stepmotor
+const float stepAngle = 1.8; //stepAngle (degree)
+const int stepsPerRevolution = 200; // stepsPerRevolution
 
-// 步進馬達旋轉方向
+// rotate diretection of stepmotor
 const int clockwise = HIGH;
 const int counterclockwise = LOW;
 int direction; //1=>CW;0=>CCW;
 
-// 步進馬達旋轉速度 (步驟/秒)
-int stepperSpeed = 500; // 設定步驟/秒的數值，控制旋轉速度 要改的參數
+// rotate speed of stepmotor (steps/sec)
+int stepperSpeed = 500; // Set the value of steps per second to control the rotation speed
 int steps; //移動步數
 
 void setup() {
@@ -42,45 +42,45 @@ void setup() {
   Wire.begin();
   lcd.begin(LCD_COLS, LCD_ROWS);
   lcd.backlight();
-  // 設定控制引腳為輸出
+  // set control pins
   pinMode(stepPin, OUTPUT);
   pinMode(dirPin, OUTPUT);
   pinMode(enablePin, OUTPUT);
 
-  // 設定旋轉編碼器引腳為輸入模式
+  //  Set the rotary encoder pin to input mode
   pinMode(encoderPinA, INPUT);
   pinMode(encoderPinB, INPUT);
   pinMode(confirmPin, INPUT);
 
-  // 啟用內部上拉電阻
+  // Enable internal pull-up resistor
   digitalWrite(encoderPinA, HIGH);
   digitalWrite(encoderPinB, HIGH);
 
-  // 附加中斷服務例程
+  // Attach interrupt service routine
   attachInterrupt(digitalPinToInterrupt(encoderPinA), updateEncoder, CHANGE);
   attachInterrupt(digitalPinToInterrupt(encoderPinB), updateEncoder, CHANGE);
   
-  // 禁用步進馬達 (預設為低電平)
+  // disable stepmotor
   digitalWrite(enablePin, HIGH);
 }
 
 void loop() {
-  // 編碼器正逆轉判斷
+  // clockwise or counterclockwise judgement(CW & CCW)
   if (encoderValue > tempencoderValue){
     mode++;
     tempencoderValue = encoderValue;
-    dir = 1; //正轉
+    dir = 1; //CW
     rot = 1;
   }
   if (encoderValue < tempencoderValue){
     mode--;
     tempencoderValue = encoderValue;
-    dir = -1; //逆轉
+    dir = -1; //CCW
     rot = 1;
   }
 
 
-  selectmode = abs(mode % 2); //選擇要操作的模式:1=>速度;2=>步數
+  selectmode = abs(mode % 2); //select one part to cintrol:1 => speed; 2 => steps
   switch (level){
     case 1:
     lcd.setCursor(0,0);
@@ -89,7 +89,7 @@ void loop() {
       lcd.setCursor(0, 1);
       lcd.print(mode*100);
       stepperSpeed = mode*100;
-      lcd.print("s"); // 之後要改成速率或是對毫升數
+      lcd.print("s"); // 
       if (digitalRead(confirmPin) == HIGH){
         level = 2;
       }
@@ -125,7 +125,7 @@ void loop() {
       lcd.setCursor(0, 1);
       lcd.print(mode*100);
       steps = mode*100;
-      lcd.print("steps"); // 之後要改成速率或是對毫升數
+      lcd.print("steps"); // 
       if (digitalRead(confirmPin) == HIGH){
         level = 4;
       }
@@ -154,21 +154,21 @@ void loop() {
     lcd.print("Working...");
     digitalWrite(enablePin,LOW);
     if(direction == 1){
-      digitalWrite(dirPin, clockwise); // 設定方向為順時針
+      digitalWrite(dirPin, clockwise); // CW
       for (int i = 0; i < steps; i++) {
         digitalWrite(stepPin, HIGH);
-        delayMicroseconds(stepperSpeed); // 設定步進馬達的步進速度
+        delayMicroseconds(stepperSpeed); // speeds of stepmotor
         digitalWrite(stepPin, LOW);
-        delayMicroseconds(stepperSpeed); // 設定步進馬達的步進速度
+        delayMicroseconds(stepperSpeed); // speeds of stepmotor
       }
     }
     if(direction == 0){
-      digitalWrite(dirPin, counterclockwise); // 設定方向為逆時針
+      digitalWrite(dirPin, counterclockwise); // CCW
       for (int i = 0; i < steps; i++) {
         digitalWrite(stepPin, HIGH);
-        delayMicroseconds(stepperSpeed); // 設定步進馬達的步進速度
+        delayMicroseconds(stepperSpeed); // speeds of stepmotor
         digitalWrite(stepPin, LOW);
-        delayMicroseconds(stepperSpeed); // 設定步進馬達的步進速度
+        delayMicroseconds(stepperSpeed); // speeds of stepmotor
       }
     }
     level = 6;
@@ -218,56 +218,56 @@ void loop() {
   delay(300);
   lcd.clear();
   /*
-  // 順時針旋轉
-  rotateClockwise(500); // 旋轉200步驟
-  delay(1000); // 延遲 1 秒
+  // CW
+  rotateClockwise(500); // rotate 500 steps
+  delay(1000);  
   
-  // 逆時針旋轉
-  rotateCounterclockwise(500); // 旋轉100步驟
-  delay(1000); // 延遲 1 秒
+  // CCW
+  rotateCounterclockwise(500); // rotate 500 steps
+  delay(1000); 
 
   digitalWrite(enablePin,HIGH);
   delay(100);
   */
 }
 /*
-// 步進馬達順時針旋轉指定步數
+// Rotate the stepper motor CW by a specified number of steps
 void rotateClockwise(int steps) {
-  digitalWrite(dirPin, clockwise); // 設定方向為順時針
+  digitalWrite(dirPin, clockwise); // CW
   for (int i = 0; i < steps; i++) {
     digitalWrite(stepPin, HIGH);
-    delayMicroseconds(stepperSpeed); // 設定步進馬達的步進速度
+    delayMicroseconds(stepperSpeed); // set the speed of stepmotor
     digitalWrite(stepPin, LOW);
-    delayMicroseconds(stepperSpeed); // 設定步進馬達的步進速度
+    delayMicroseconds(stepperSpeed); // set the speed of stepmotor
   }
 }
 
-// 步進馬達逆時針旋轉指定步數
+// Rotate the stepper motor CCW by a specified number of steps
 void rotateCounterclockwise(int steps) {
-  digitalWrite(dirPin, counterclockwise); // 設定方向為逆時針
+  digitalWrite(dirPin, counterclockwise); // CCW
   for (int i = 0; i < steps; i++) {
     digitalWrite(stepPin, HIGH);
-    delayMicroseconds(stepperSpeed); // 設定步進馬達的步進速度
+    delayMicroseconds(stepperSpeed); // set the speed of stepmotor
     digitalWrite(stepPin, LOW);
-    delayMicroseconds(stepperSpeed); // 設定步進馬達的步進速度
+    delayMicroseconds(stepperSpeed); // set the speed of stepmotor
   }
 }
 */
 void updateEncoder() {
-  int MSB = digitalRead(encoderPinA);  // 讀取引腳 A 的狀態
-  int LSB = digitalRead(encoderPinB);  // 讀取引腳 B 的狀態
+  int MSB = digitalRead(encoderPinA);  // Read the status of pin A
+  int LSB = digitalRead(encoderPinB);  // Read the status of pin B
 
-  int encoded = (MSB << 1) | LSB;  // 編碼值
+  int encoded = (MSB << 1) | LSB;  // encoded valve
   
-  int sum = (lastEncoded << 2) | encoded;  // 上一次和當前的編碼值組合
+  int sum = (lastEncoded << 2) | encoded;  // Combination of last and current coded values
 
-  // 根據旋轉方向增加或減少編碼器值
+  // Increase or decrease the encoder value depending on the direction of rotation
   if (sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) {
     encoderValue++;
   } else if (sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) {
     encoderValue--;
   }
 
-  lastEncoded = encoded;  // 更新上一次的編碼值
+  lastEncoded = encoded;  // Update the last encoding value
 }
 
