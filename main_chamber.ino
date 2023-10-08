@@ -6,93 +6,93 @@
 LiquidCrystal_I2C lcd(I2C_ADDR, LCD_COLS, LCD_ROWS);
 
 #include <Servo.h>
-// 定義伺服馬達物件
+// Define a servo motor object
 //Servo valve1servo;
 //Servo valve2servo;
 Servo shakeservo;
 
-const int encoderPinA = 2;  // 旋轉編碼器引腳 A（CLK）
-const int encoderPinB = 3;  // 旋轉編碼器引腳 B（DT）
-const int confirmPin = 4; //確認引腳 10k Ω
-const int PBSPin = 5; //PBS引腳
-const int mGLPin = 6; //mGL引腳
-const int DNasePin = 7; //DNase引腳
-const int beepPin = 8; //蜂鳴器引腳
-//const int valve1Pin = 9; //第一閥引腳
-//const int valve2Pin = 10; //第二閥引腳
-const int shakePin = 11; //搖晃引腳
+const int encoderPinA = 2;  // Rotary encoder pin A (CLK)
+const int encoderPinB = 3;  // Rotary encoder pin B（DT）
+const int confirmPin = 4; // Rotary encoder confirm pin with 10k Ω
+const int PBSPin = 5; //PBS pin
+const int mGLPin = 6; //mGL pin
+const int DNasePin = 7; //DNase pin Dnase was used to be a cutter of zinc finger protin,now we replace Dnase with zinc ion aqueous solution
+const int beepPin = 8; //Buzzer pin
+//const int valve1Pin = 9; //valve1 pin
+//const int valve2Pin = 10; //valve2 pin
+const int shakePin = 11; //shake pin
 
 int lastEncoded = 0;
-long encoderValue = 0; //旋轉編碼器記數
-long tempencoderValue = 0; //旋轉編碼器記數暫存
-int mode = 0; //記數切換模式
-int selectmode = 0; //選擇第一層模式
-int dir = 0;//定義旋轉方向
-int rot = 0;//是否旋轉
-int modeselection; //儲存選擇的模式
-int level = 1; //現在顯示的等級(圖層順序)
+long encoderValue = 0; //encoderValue
+long tempencoderValue = 0; //encoderValue temp
+int mode = 0; //mode level
+int selectmode = 0; //level 1 mode selection
+int dir = 0;//define rotary encoder rotate direction
+int rot = 0;//define rotary encoder rotate ot not
+int modeselection; //save the mode selected
+int level = 1; //now select level
 int ml; //liquid ml
-//int valve1 = 1; //第一閥為開啟
-//int valve2 = 1; //第二閥為開啟
-//int valve1act = 1;//第一閥即將要進行的動作:1開0關
-//int valve2act = 1;//第二閥即將要進行的動作:1開0關
+//int valve1 = 1; //valve1 open
+//int valve2 = 1; //valve2 open
+//int valve1act = 1;//valve1 going to do ;1 => open; 0 => close
+//int valve2act = 1;//valve2 going to do ;1 => open; 0 => close
 int sec;//shake time
 int pumptime = 620;//pumpint time,1ml per 0.62sec,must be retest after confirm every risistor and motor ans servo
 int shakepos = 30;//init shake angle
 
 void setup() {
-  // 初始化串口通信
+  // Initialize serial communication
   Serial.begin(9600);
   Wire.begin();
   lcd.begin(LCD_COLS, LCD_ROWS);
   lcd.backlight();
 
-  //蜂鳴器引腳輸出
+  //beepPin
   pinMode(beepPin, OUTPUT);
 
-  //PBS引腳輸出
+  //PBSPin
   pinMode(PBSPin, OUTPUT);
-  //mGL引腳輸出
+  //mGLPin
   pinMode(mGLPin, OUTPUT);
-  //DNase引腳輸出
+  //DNasePin
   pinMode(DNasePin, OUTPUT);
 
-  //伺服馬達引腳輸出
-  //valve1servo.attach(valve1Pin);//第一閥
-  //valve2servo.attach(valve2Pin);//第二閥
-  shakeservo.attach(shakePin);//搖晃馬達
-  //伺服馬達先開
+  //servos
+  //valve1servo.attach(valve1Pin);//valve1
+  //valve2servo.attach(valve2Pin);//valve2
+  shakeservo.attach(shakePin);//shakePin
+  //open valves initially(let servos keep on open angle)
   //valve1servo.write(20);//valve1 opening code
   //valve2servo.write(20);//valve1 opening code
   shakeservo.write(shakepos);
 
   
-  // 設定旋轉編碼器引腳為輸入模式
+  // Set the rotary encoder pin to input mode
   pinMode(encoderPinA, INPUT);
   pinMode(encoderPinB, INPUT);
   pinMode(confirmPin, INPUT);
   
-  // 啟用內部上拉電阻
+  // Enable internal pull-up resistor
   digitalWrite(encoderPinA, HIGH);
   digitalWrite(encoderPinB, HIGH);
   
-  // 附加中斷服務例程
+  // Attach interrupt service routine
   attachInterrupt(digitalPinToInterrupt(encoderPinA), updateEncoder, CHANGE);
   attachInterrupt(digitalPinToInterrupt(encoderPinB), updateEncoder, CHANGE);
 }
 
 void loop() {
-    // 正逆轉判斷
+    // clockwise or counterclockwise judgement(CW & CCW)
     if (encoderValue > tempencoderValue){
       mode++;
       tempencoderValue = encoderValue;
-      dir = 1; //正轉
+      dir = 1; //CW
       rot = 1;
     }
     if (encoderValue < tempencoderValue){
       mode--;
       tempencoderValue = encoderValue;
-      dir = -1; //逆轉
+      dir = -1; //CCW
       rot = 1;
     }
 
@@ -102,13 +102,13 @@ void loop() {
   //Serial.println(tempencoderValue);
   //Serial.println("mode");
 
-  selectmode = abs(mode % 6); //選擇要操作的裝置 1=PBS;2=mGL;3=DNase;4=valve1;5=valve2;6=shake;
+  selectmode = abs(mode % 6); //select one part to cintrol 1=PBS;2=mGL;3=DNase;4=valve1;5=valve2;6=shake;
   switch (level){
     case 1://select mode to control
-      switch (selectmode){ //選擇要使用的裝置部分
+      switch (selectmode){ //select one part to cintrol
           case 1:
-            if(mode > 0){ //正轉
-              lcd.setCursor(0, 0); // 設定游標位置在第一行行首
+            if(mode > 0){ //CW
+              lcd.setCursor(0, 0); // set LCD start on [1,1]
               lcd.print("Select Mode");
               lcd.setCursor(0,1);
               lcd.print("PBS");
@@ -118,7 +118,7 @@ void loop() {
                 break;
               }
             }
-            if(mode < 0){ //反轉
+            if(mode < 0){ //CCW
               lcd.setCursor(0, 0);
               lcd.print("Select Mode");
               lcd.setCursor(0,1);
@@ -261,7 +261,7 @@ void loop() {
               }
             }
             break;
-            case 0: //mode回零不顯示確認
+            case 0: //if mode come back to 0, let mode += 1 or -= 1(not to show the home page but keep on select page)
             if(mode % 6 == 0 && rot == 1){
               if(mode >= 0 && dir == 1){
                 mode = mode + 1;
@@ -888,19 +888,18 @@ void loop() {
 }
 
 void updateEncoder() {
-  int MSB = digitalRead(encoderPinA);  // 讀取引腳 A 的狀態
-  int LSB = digitalRead(encoderPinB);  // 讀取引腳 B 的狀態
-
-  int encoded = (MSB << 1) | LSB;  // 編碼值
+  int MSB = digitalRead(encoderPinA);  // Read the status of pin A
+  int LSB = digitalRead(encoderPinB);  // Read the status of pin B
+  int encoded = (MSB << 1) | LSB;  // encoded valve
   
-  int sum = (lastEncoded << 2) | encoded;  // 上一次和當前的編碼值組合
+  int sum = (lastEncoded << 2) | encoded;  // Combination of last and current coded values
 
-  // 根據旋轉方向增加或減少編碼器值
+  // Increase or decrease the encoder value depending on the direction of rotation
   if (sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) {
     encoderValue++;
   } else if (sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) {
     encoderValue--;
   }
 
-  lastEncoded = encoded;  // 更新上一次的編碼值
+  lastEncoded = encoded;  //Update the last encoding value
 }
